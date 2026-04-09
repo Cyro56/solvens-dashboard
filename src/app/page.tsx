@@ -4,9 +4,13 @@ import React from 'react';
 import { Header } from '@/components/Header';
 import { StatsHeader } from '@/components/StatsHeader';
 import { MarketTable } from '@/components/MarketTable';
-import { Info } from 'lucide-react';
+import { Info, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function Home() {
+  const { t } = useTranslation();
+  
   return (
     <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
@@ -24,35 +28,58 @@ export default function Home() {
               borderRadius: '12px',
               border: '1px solid rgba(56, 251, 219, 0.2)'
             }}>
-              v1.0.0
+              {t('dashboard.v1')}
             </span>
             <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-              Protocolo de Crédito Descentralizado
+              {t('dashboard.protocolDesc')}
             </span>
           </div>
           
           <h1 style={{ fontSize: '48px', color: 'var(--text-primary)', marginBottom: '16px', lineHeight: 1.1 }}>
-            O Futuro do Crédito é <br />
+            {t('dashboard.heroTitleLine1')} <br />
             <span style={{ 
               backgroundImage: 'linear-gradient(90deg, var(--primary), #b6509e)', 
               WebkitBackgroundClip: 'text', 
               WebkitTextFillColor: 'transparent' 
             }}>
-              Matematicamente Garantido.
+              {t('dashboard.heroTitleLine2')}
             </span>
           </h1>
           
-          <p style={{ maxWidth: '600px', color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '16px' }}>
-            Solvens transforma o risco de crédito em um ativo negociável. 
-            Forneça capital como <strong>Caller</strong> ou especule contra a inadimplência como <strong>Seller</strong>.
+          <p style={{ maxWidth: '600px', color: 'var(--text-secondary)', lineHeight: 1.6, fontSize: '16px', marginBottom: '32px' }}>
+            {t('dashboard.heroSubtitle')}
           </p>
+
+          <Link href="/create-loan">
+            <button style={{
+              padding: '14px 28px',
+              backgroundColor: 'var(--primary)',
+              color: '#000',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '16px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 0 20px rgba(56, 251, 219, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+            >
+              <Plus size={20} />
+              {t('common.requestLoan')}
+            </button>
+          </Link>
         </section>
 
         {/* Protocol Stats */}
         <StatsHeader />
 
         {/* Markets Section */}
-        <section style={{ marginBottom: '64px' }}>
+        <section id="markets" style={{ marginBottom: '64px' }}>
           <MarketTable />
         </section>
         
@@ -79,22 +106,28 @@ export default function Home() {
             <Info size={24} />
           </div>
           <div style={{ flex: 1 }}>
-            <h4 style={{ color: 'var(--text-primary)', fontSize: '16px', marginBottom: '4px' }}>Como funciona o Solvens?</h4>
+            <h4 style={{ color: 'var(--text-primary)', fontSize: '16px', marginBottom: '4px' }}>{t('dashboard.helpBannerTitle')}</h4>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-              Callers buscam juros fixos, enquanto Sellers apostam no calote para ganhar prêmios acelerados. 
-              O colateral depositado pelo tomador serve como um &quot;Airbag&quot; para os Callers em caso de falha.
+              {t('dashboard.helpBannerDesc')}
             </p>
           </div>
-          <button style={{
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: '1px solid var(--card-border)',
-            color: 'var(--text-primary)',
-            fontSize: '14px',
-            fontWeight: 500
-          }}>
-            Ler Documentação
-          </button>
+          <Link href="/docs">
+            <button style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              border: '1px solid var(--card-border)',
+              color: 'var(--text-primary)',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {t('dashboard.readDocsBtn')}
+            </button>
+          </Link>
         </div>
       </div>
 
@@ -106,12 +139,12 @@ export default function Home() {
       }}>
         <div className="container flex-between">
           <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-            © 2026 Solvens Protocol. Code is Credit.
+            © 2026 Solvens Protocol. {t('dashboard.footerTagline')}
           </div>
           <div style={{ display: 'flex', gap: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
-            <a href="#">Termos</a>
-            <a href="#">Privacidade</a>
-            <a href="#">Segurança</a>
+            <a href="#">{t('common.terms')}</a>
+            <a href="#">{t('common.privacy')}</a>
+            <a href="#">{t('sidebar.security')}</a>
             <a href="#">Github</a>
           </div>
         </div>

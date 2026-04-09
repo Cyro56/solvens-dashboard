@@ -2,8 +2,11 @@
 
 import React from 'react';
 import { TrendingUp, ShieldCheck, Activity } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export const StatsHeader: React.FC = () => {
+  const { t } = useTranslation();
+  
   return (
     <div style={{
       display: 'grid',
@@ -12,21 +15,15 @@ export const StatsHeader: React.FC = () => {
       marginBottom: '40px'
     }}>
       <StatCard 
-        label="Tamanho Total do Mercado" 
+        label={t('stats.totalMarketSize')} 
         value="$42.85B" 
         icon={<TrendingUp size={20} color="var(--primary)" />} 
         trend="+2.4%"
       />
       <StatCard 
-        label="Total de Empréstimos" 
+        label={t('stats.totalLoans')} 
         value="$23.93B" 
         icon={<Activity size={20} color="var(--primary)" />} 
-      />
-      <StatCard 
-        label="Colateral 'Airbag'" 
-        value="$4.12B" 
-        icon={<ShieldCheck size={20} color="var(--primary)" />} 
-        description="Proteção para Callers"
       />
     </div>
   );
