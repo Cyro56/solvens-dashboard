@@ -10,7 +10,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Language } from '@/i18n/translations';
 
 export const Header: React.FC = () => {
-  const { account, balance, usdcBalance, isTestnet, isConnecting, connect, toggleMarket, mintUSDC, shortenAddress, copyToClipboard } = useWeb3();
+  const { account, balance, usdcBalance, isTestnet, networkName, isConnecting, connect, toggleMarket, switchToMarket, mintUSDC, shortenAddress, copyToClipboard } = useWeb3();
   const { t, language, setLanguage } = useTranslation();
   const pathname = usePathname();
   const [copied, setCopied] = React.useState(false);
@@ -66,19 +66,26 @@ export const Header: React.FC = () => {
             borderRadius: '12px',
             padding: '4px',
             border: '1px solid var(--card-border)',
-            marginRight: '12px'
+            marginRight: '12px',
+            gap: '4px'
           }}>
             <MarketToggle
-              label={t('common.simulated')}
-              active={isTestnet}
-              onClick={() => !isTestnet && toggleMarket()}
+              label={networkName === 'Localhost' ? 'Local' : 'Local'}
+              active={networkName === 'Localhost'}
+              onClick={() => switchToMarket('local')}
+              color="#94a3b8"
+            />
+            <MarketToggle
+              label={networkName === 'Amoy' ? 'Amoy' : 'Amoy'}
+              active={networkName === 'Amoy'}
+              onClick={() => switchToMarket('amoy')}
               color="var(--warning)"
             />
             <MarketToggle
-              label={t('common.real')}
-              active={!isTestnet}
-              onClick={() => isTestnet && toggleMarket()}
-              color="var(--success)"
+              label={networkName === 'Polygon' ? 'Polygon' : 'Real'}
+              active={networkName === 'Polygon'}
+              onClick={() => switchToMarket('real')}
+              color="#8247E5"
             />
           </div>
 
@@ -147,8 +154,7 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={account ? undefined : connect}
+          <div
             style={{
               padding: '10px 14px',
               backgroundColor: account ? 'rgba(255,255,255,0.05)' : 'var(--primary)',
@@ -163,8 +169,9 @@ export const Header: React.FC = () => {
               transition: 'all 0.2s ease',
               border: account ? '1px solid var(--card-border)' : 'none',
               boxShadow: account ? 'none' : '0 0 15px rgba(56, 251, 219, 0.3)',
-              cursor: isConnecting ? 'wait' : 'pointer'
+              cursor: isConnecting ? 'wait' : (account ? 'default' : 'pointer')
             }}
+            onClick={account ? undefined : connect}
             onMouseEnter={(e) => !account && (e.currentTarget.style.transform = 'scale(1.02)')}
             onMouseLeave={(e) => !account && (e.currentTarget.style.transform = 'scale(1)')}
           >
@@ -177,22 +184,45 @@ export const Header: React.FC = () => {
                       {usdcBalance} USDC
                     </span>
                     {isTestnet && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); mintUSDC(); }}
-                        title={t('common.faucetUSDC')}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--primary)',
-                          background: 'rgba(56, 251, 219, 0.1)',
-                          borderRadius: '4px',
-                          padding: '2px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <Plus size={12} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); mintUSDC(); }}
+                          title={t('common.faucetUSDC')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--primary)',
+                            background: 'rgba(56, 251, 219, 0.1)',
+                            borderRadius: '4px',
+                            padding: '2px',
+                            transition: 'all 0.2s',
+                            border: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Plus size={12} />
+                        </button>
+                        <button 
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const { HARDHAT_LOCALHOST, web3Manager: manager } = await import('@/services/web3Manager');
+                            await manager.switchNetwork(HARDHAT_LOCALHOST);
+                          }}
+                          style={{
+                            padding: '2px 6px',
+                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                            border: '1px solid #ef4444',
+                            borderRadius: '4px',
+                            color: '#ef4444',
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          FIX
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -242,7 +272,7 @@ export const Header: React.FC = () => {
                 {isConnecting ? t('common.connecting') : t('common.connectWallet')}
               </>
             )}
-          </button>
+          </div>
         </div>
       </div>
     </header>

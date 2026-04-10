@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { web3Manager } from '@/services/web3Manager';
 import { ArrowLeft, HandCoins, Info, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CreateLoanPage() {
   const { t } = useTranslation();
+  const { switchToMarket } = useWeb3();
   
   // Form State
   const [formData, setFormData] = useState({
@@ -24,6 +27,16 @@ export default function CreateLoanPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [txHash, setTxHash] = useState('');
+  const [error, setError] = useState('');
+
+  const handleFixNetwork = async () => {
+    try {
+      await switchToMarket('amoy');
+    } catch (e: any) {
+      setError('Falha ao configurar rede: ' + e.message);
+    }
+  };
 
   // Constants
   const ADMIN_FEE_PERCENT = 0.03; // 3%
@@ -54,20 +67,40 @@ export default function CreateLoanPage() {
     setRawValues({ ...rawValues, collateral: rawValue });
   };
 
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const calculateAdminFee = () => {
     const amount = rawValues.amount;
-    return (amount * ADMIN_FEE_PERCENT).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (amount * ADMIN_FEE_PERCENT).toFixed(2);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const hash = await web3Manager.deployLoan(
+        rawValues.amount.toString(),
+        formData.apr,
+        30, 
+        rawValues.collateral.toString()
+      );
+      
+      setTxHash(hash);
       setIsSuccess(true);
-    }, 1500);
+      
+      // Sinaliza ao dashboard para recarregar os logs do contrato
+      window.dispatchEvent(new CustomEvent('solvens:loanCreated'));
+    } catch (err: any) {
+      setError(err.message || 'Falha ao criar empréstimo na rede.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isSuccess) {
@@ -89,9 +122,23 @@ export default function CreateLoanPage() {
             <h1 style={{ fontSize: '32px', color: 'var(--text-primary)', marginBottom: '16px', fontFamily: 'Outfit' }}>
               {t('createLoan.successMsg')}
             </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px', lineHeight: 1.6 }}>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.6 }}>
               {t('docsContent.loans.p3')}
             </p>
+            {txHash && (
+              <div style={{ 
+                padding: '12px', 
+                backgroundColor: 'rgba(255,255,255,0.05)', 
+                borderRadius: '8px', 
+                marginBottom: '32px',
+                fontSize: '12px',
+                wordBreak: 'break-all',
+                color: 'var(--primary)',
+                fontFamily: 'monospace'
+              }}>
+                TX: {txHash}
+              </div>
+            )}
             <Link href="/">
               <button style={{
                 width: '100%',
@@ -290,7 +337,7 @@ export default function CreateLoanPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
               <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>{t('createLoan.adminFeeLabel')}</span>
               <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontFamily: 'monospace' }}>
-                {calculateAdminFee()} USDT
+                {isMounted ? calculateAdminFee() : '0.00'} USDT
               </span>
             </div>
             <div style={{ display: 'flex', gap: '10px', color: 'var(--primary)', opacity: 0.8 }}>
@@ -300,6 +347,43 @@ export default function CreateLoanPage() {
               </p>
             </div>
           </div>
+
+          {error && (
+            <div style={{ 
+              padding: '16px', 
+              backgroundColor: 'rgba(255, 82, 82, 0.1)', 
+              border: '1px solid rgba(255, 82, 82, 0.2)', 
+              borderRadius: '12px',
+              color: '#ff5252',
+              fontSize: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertCircle size={18} />
+                {error}
+              </div>
+                <button
+                  onClick={handleFixNetwork}
+                  style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: '#ff5252',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '4px',
+                    boxShadow: '0 4px 12px rgba(255, 82, 82, 0.3)'
+                  }}
+                >
+                  Corrigir Configuração de Rede (MetaMask)
+                </button>
+            </div>
+          )}
 
           <button 
             disabled={isSubmitting}

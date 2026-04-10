@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { web3Manager, POLYGON_MAINNET, POLYGON_AMOY, Web3State } from '@/services/web3Manager';
+import { web3Manager, POLYGON_MAINNET, POLYGON_AMOY, HARDHAT_LOCALHOST, Web3State } from '@/services/web3Manager';
 import { notificationService } from '@/services/notificationService';
 
 export const useWeb3 = () => {
@@ -23,15 +23,23 @@ export const useWeb3 = () => {
     }
   };
 
-  const toggleMarket = async () => {
-    const targetConfig = state.isTestnet ? POLYGON_MAINNET : POLYGON_AMOY;
+  const switchToMarket = async (type: 'local' | 'amoy' | 'real') => {
+    let targetConfig;
+    if (type === 'local') targetConfig = HARDHAT_LOCALHOST;
+    else if (type === 'amoy') targetConfig = POLYGON_AMOY;
+    else targetConfig = POLYGON_MAINNET;
+
     try {
       await web3Manager.switchNetwork(targetConfig);
-      // isTestnet will be updated by the manager's internal chain listener
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao trocar rede';
       notificationService.error(message);
     }
+  };
+
+  const toggleMarket = async () => {
+    const targetType = state.isTestnet ? 'real' : 'amoy';
+    await switchToMarket(targetType);
   };
 
   const mintUSDC = async () => {
@@ -61,6 +69,7 @@ export const useWeb3 = () => {
     ...state,
     connect,
     toggleMarket,
+    switchToMarket,
     mintUSDC,
     shortenAddress,
     copyToClipboard

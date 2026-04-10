@@ -1,8 +1,17 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useWeb3 } from '@/hooks/useWeb3';
+import { web3Manager } from '@/services/web3Manager';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Info, 
+  Copy,
+  Loader2
+} from 'lucide-react';
 
 interface LoanMarket {
   id: string;
@@ -17,21 +26,6 @@ interface LoanMarket {
   callsPercentage: number;
   status: 'PENDING' | 'ACTIVE' | 'CANCELLED';
 }
-
-const MOCK_DATA: LoanMarket[] = [
-  { id: '1', contractAddress: '0x789b...a12c', borrowerAddress: '0x123a...f456', tokenName: 'sUSDC-Debt', totalDebt: '450,000 USDC', callerAPR: '32.50%', sellerPrize: '8.20%', collateral: '280,000 USDC', collateralScore: 62, callsPercentage: 92, status: 'ACTIVE' },
-  { id: '2', contractAddress: '0x456d...e789', borrowerAddress: '0x987b...c321', tokenName: 'sUSDC-Debt', totalDebt: '1,200,000 USDC', callerAPR: '28.15%', sellerPrize: '6.45%', collateral: '950,000 USDC', collateralScore: 79, callsPercentage: 88, status: 'PENDING' },
-  { id: '3', contractAddress: '0x123f...b012', borrowerAddress: '0x555c...d888', tokenName: 'sUSDC-Debt', totalDebt: '250,000 USDC', callerAPR: '42.00%', sellerPrize: '12.30%', collateral: '180,000 USDC', collateralScore: 72, callsPercentage: 75, status: 'ACTIVE' },
-  { id: '4', contractAddress: '0xbcde...f999', borrowerAddress: '0xaaa1...e111', tokenName: 'sUSDC-Debt', totalDebt: '85,000 USDC', callerAPR: '38.60%', sellerPrize: '9.80%', collateral: '45,000 USDC', collateralScore: 53, callsPercentage: 81, status: 'CANCELLED' },
-  { id: '5', contractAddress: '0x222a...b333', borrowerAddress: '0xccc4...d555', tokenName: 'sUSDC-Debt', totalDebt: '150,000 USDC', callerAPR: '35.20%', sellerPrize: '7.80%', collateral: '110,000 USDC', collateralScore: 73, callsPercentage: 90, status: 'ACTIVE' },
-  { id: '6', contractAddress: '0xdee3...a111', borrowerAddress: '0xbbb2...c999', tokenName: 'sUSDC-Debt', totalDebt: '90,000 USDC', callerAPR: '31.10%', sellerPrize: '6.50%', collateral: '65,000 USDC', collateralScore: 72, callsPercentage: 85, status: 'PENDING' },
-  { id: '7', contractAddress: '0x999f...c222', borrowerAddress: '0x111d...e333', tokenName: 'sUSDC-Debt', totalDebt: '2,500,000 USDC', callerAPR: '24.50%', sellerPrize: '5.20%', collateral: '1.8M USDC', collateralScore: 72, callsPercentage: 94, status: 'ACTIVE' },
-  { id: '8', contractAddress: '0x777b...d000', borrowerAddress: '0x444a...b555', tokenName: 'sUSDC-Debt', totalDebt: '320,000 USDC', callerAPR: '45.00%', sellerPrize: '14.20%', collateral: '210,000 USDC', collateralScore: 65, callsPercentage: 72, status: 'PENDING' },
-  { id: '9', contractAddress: '0x333e...f444', borrowerAddress: '0x777c...d111', tokenName: 'sUSDC-Debt', totalDebt: '1,000,000 USDC', callerAPR: '26.80%', sellerPrize: '4.95%', collateral: '750,000 USDC', collateralScore: 75, callsPercentage: 96, status: 'ACTIVE' },
-  { id: '10', contractAddress: '0xaaa2...c444', borrowerAddress: '0x888b...e999', tokenName: 'sUSDC-Debt', totalDebt: '45,000 USDC', callerAPR: '48.20%', sellerPrize: '15.50%', collateral: '25,000 USDC', collateralScore: 55, callsPercentage: 68, status: 'CANCELLED' },
-  { id: '11', contractAddress: '0x555d...e666', borrowerAddress: '0x999a...b111', tokenName: 'sUSDC-Debt', totalDebt: '210,000 USDC', callerAPR: '39.40%', sellerPrize: '10.20%', collateral: '145,000 USDC', collateralScore: 69, callsPercentage: 83, status: 'ACTIVE' },
-  { id: '12', contractAddress: '0xbbbc...d555', borrowerAddress: '0x222c...e888', tokenName: 'sUSDC-Debt', totalDebt: '600,000 USDC', callerAPR: '34.80%', sellerPrize: '8.40%', collateral: '420,000 USDC', collateralScore: 70, callsPercentage: 89, status: 'PENDING' },
-];
 
 type StatusFilter = 'ALL' | LoanMarket['status'];
 
@@ -83,14 +77,46 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
 
 export const MarketTable: React.FC = () => {
   const { t } = useTranslation();
+  const { copyToClipboard } = useWeb3();
+  const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loans, setLoans] = useState<LoanMarket[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 5;
 
+  useEffect(() => {
+    async function loadLoans(isInitial = false) {
+      if (isInitial) setIsLoading(true);
+      try {
+        const data = await web3Manager.fetchLoansFromLogs();
+        setLoans(data as LoanMarket[]);
+      } catch (err) {
+        console.error("Erro ao carregar empréstimos dos logs", err);
+      } finally {
+        if (isInitial) setIsLoading(false);
+      }
+    }
+
+    loadLoans(true);
+
+    // Polling silencioso a cada 5s para capturar novos empréstimos
+    const interval = setInterval(() => loadLoans(false), 5000);
+
+    // Listener para forçar reload imediato após criação de empréstimo
+    const onNewLoan = () => loadLoans();
+    window.addEventListener('solvens:loanCreated', onNewLoan);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('solvens:loanCreated', onNewLoan);
+    };
+  }, []);
+
   const filteredData = useMemo(() => {
-    if (filter === 'ALL') return MOCK_DATA;
-    return MOCK_DATA.filter(item => item.status === filter);
-  }, [filter]);
+    if (filter === 'ALL') return loans;
+    return loans.filter(item => item.status === filter);
+  }, [filter, loans]);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   
@@ -104,10 +130,15 @@ export const MarketTable: React.FC = () => {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
+  const shortenAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
   return (
     <div className="glass" style={{
       width: '100%',
-      padding: '32px',
+      padding: '24px',
       overflowX: 'auto',
       animation: 'fadeIn 0.6s ease forwards',
       display: 'flex',
@@ -171,7 +202,21 @@ export const MarketTable: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((item) => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={10} style={{ padding: '80px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Loader2 className="animate-spin" style={{ margin: '0 auto 16px', opacity: 0.5 }} size={32} />
+                  <p>{t('common.connecting')}...</p>
+                </td>
+              </tr>
+            ) : filteredData.length === 0 ? (
+              <tr>
+                <td colSpan={10} style={{ padding: '80px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p>Nenhum empréstimo encontrado para os filtros selecionados.</p>
+                </td>
+              </tr>
+            ) : (
+              paginatedData.map((item) => (
               <tr key={item.id} style={{
                 borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                 transition: 'background-color 0.2s',
@@ -179,12 +224,39 @@ export const MarketTable: React.FC = () => {
               }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              onClick={() => router.push(`/loan/${item.contractAddress}`)}
               >
                 <td style={TD_STYLE}>
-                  <code style={{ color: 'var(--primary)', fontSize: '13px' }}>{item.contractAddress}</code>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <code style={{ color: 'var(--primary)', fontSize: '13px', fontFamily: 'monospace' }}>
+                      {shortenAddress(item.contractAddress)}
+                    </code>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(item.contractAddress); }}
+                      style={{ color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '4px', transition: 'all 0.2s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      title="Copiar endereço completo"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
                 </td>
                 <td style={TD_STYLE}>
-                  <code style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{item.borrowerAddress}</code>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <code style={{ color: 'var(--text-secondary)', fontSize: '13px', fontFamily: 'monospace' }}>
+                      {shortenAddress(item.borrowerAddress)}
+                    </code>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(item.borrowerAddress); }}
+                      style={{ color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '4px', transition: 'all 0.2s' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                      title="Copiar endereço completo"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
                 </td>
                 <td style={TD_STYLE}>
                   <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px' }}>{item.tokenName}</div>
@@ -241,11 +313,18 @@ export const MarketTable: React.FC = () => {
                 </td>
                 <td style={{ ...TD_STYLE, textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <ActionButton label={t('marketTable.investBtn')} type="primary" />
+                    <ActionButton 
+                      label={t('marketTable.investBtn')} 
+                      type="primary" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        router.push(`/loan/${item.contractAddress}`);
+                      }}
+                    />
                   </div>
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>
@@ -306,8 +385,10 @@ const StatusBadge: React.FC<{ status: LoanMarket['status'] }> = ({ status }) => 
   );
 };
 
-const ActionButton: React.FC<{ label: string; type: 'primary' | 'secondary' }> = ({ label, type }) => (
-  <button style={{
+const ActionButton: React.FC<{ label: string; type: 'primary' | 'secondary'; onClick?: (e: React.MouseEvent) => void }> = ({ label, type, onClick }) => (
+  <button 
+    onClick={onClick}
+    style={{
     padding: '10px 24px',
     borderRadius: '8px',
     backgroundColor: type === 'primary' ? 'var(--primary)' : 'rgba(182, 80, 158, 0.1)',
@@ -355,7 +436,7 @@ const Tag: React.FC<{ label: string; active?: boolean; onClick: () => void }> = 
 );
 
 const TH_STYLE: React.CSSProperties = {
-  padding: '16px 12px',
+  padding: '16px 10px',
   color: 'var(--text-muted)',
   fontSize: '11px',
   textTransform: 'uppercase',
@@ -364,7 +445,7 @@ const TH_STYLE: React.CSSProperties = {
 };
 
 const TD_STYLE: React.CSSProperties = {
-  padding: '20px 12px',
+  padding: '20px 10px',
   verticalAlign: 'middle'
 };
 
